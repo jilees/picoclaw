@@ -430,6 +430,10 @@ func (m *Manager) initChannels(channels *config.ChannelsConfig) error {
 		m.initChannel("vk", "VK")
 	}
 
+	if channels.SberBoom.Enabled && channels.SberBoom.BackendURL != "" {
+		m.initChannel("sberboom", "SberBoom")
+	}
+
 	if channels.TeamsWebhook.Enabled && len(channels.TeamsWebhook.Webhooks) > 0 {
 		hasValidTarget := false
 		for _, target := range channels.TeamsWebhook.Webhooks {

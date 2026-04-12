@@ -314,6 +314,7 @@ type ChannelsConfig struct {
 	IRC          IRCConfig          `json:"irc"           yaml:"irc,omitempty"`
 	VK           VKConfig           `json:"vk"            yaml:"vk,omitempty"`
 	TeamsWebhook TeamsWebhookConfig `json:"teams_webhook" yaml:"teams_webhook,omitempty"`
+	SberBoom     SberBoomConfig     `json:"sberboom"      yaml:"sberboom,omitempty"`
 }
 
 // GroupTriggerConfig controls when the bot responds in group chats.
@@ -547,6 +548,17 @@ type PicoClientConfig struct {
 	PingInterval int                 `json:"ping_interval,omitempty" yaml:"-"`
 	ReadTimeout  int                 `json:"read_timeout,omitempty"  yaml:"-"`
 	AllowFrom    FlexibleStringSlice `json:"allow_from"              yaml:"-"               env:"PICOCLAW_CHANNELS_PICO_CLIENT_ALLOW_FROM"`
+}
+
+type SberBoomConfig struct {
+	Enabled      bool                `json:"enabled"                 yaml:"-"               env:"PICOCLAW_CHANNELS_SBERBOOM_ENABLED"`
+	BackendURL   string              `json:"backend_url"             yaml:"-"               env:"PICOCLAW_CHANNELS_SBERBOOM_BACKEND_URL"`
+	UserID       string              `json:"user_id"                 yaml:"-"               env:"PICOCLAW_CHANNELS_SBERBOOM_USER_ID"`
+	TTSScript    string              `json:"tts_script"              yaml:"-"               env:"PICOCLAW_CHANNELS_SBERBOOM_TTS_SCRIPT"`
+	Token        SecureString        `json:"token,omitzero"          yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_SBERBOOM_TOKEN"`
+	PingInterval int                 `json:"ping_interval,omitempty" yaml:"-"`
+	ReadTimeout  int                 `json:"read_timeout,omitempty"  yaml:"-"`
+	AllowFrom    FlexibleStringSlice `json:"allow_from"              yaml:"-"               env:"PICOCLAW_CHANNELS_SBERBOOM_ALLOW_FROM"`
 }
 
 type IRCConfig struct {
