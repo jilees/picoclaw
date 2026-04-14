@@ -454,6 +454,7 @@ PicoClaw 通过 `model_list` 配置支持 30+ LLM Provider，使用 `协议/模�
 |---------|----------|------|------|
 | **Telegram** | 简单（bot token） | 长轮询 | [指南](docs/channels/telegram/README.zh.md) |
 | **Discord** | 简单（bot token + intents） | WebSocket | [指南](docs/channels/discord/README.zh.md) |
+| **Mattermost** | 简单（bot token） | WebSocket + REST | [指南](docs/channels/mattermost/README.zh.md) |
 | **WhatsApp** | 简单（扫码或 bridge URL） | 原生 / Bridge | [指南](docs/zh/chat-apps.md#whatsapp) |
 | **微信 (Weixin)** | 简单（扫码登录） | iLink API | [指南](docs/zh/chat-apps.md#weixin) |
 | **QQ** | 简单（AppID + AppSecret） | WebSocket | [指南](docs/channels/qq/README.zh.md) |
@@ -616,7 +617,3 @@ Discord: <https://discord.gg/V4sAZ9XWpN>
 
 WeChat:
 <img src="assets/wechat.png" alt="WeChat group QR code" width="512">
-
-
-
-
