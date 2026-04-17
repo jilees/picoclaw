@@ -82,9 +82,6 @@ func NewSberBoomChannel(cfg config.SberBoomConfig, messageBus *bus.MessageBus) (
 	if cfg.BackendURL == "" {
 		return nil, fmt.Errorf("sberboom: backend_url is required")
 	}
-	if cfg.UserID == "" {
-		return nil, fmt.Errorf("sberboom: user_id is required")
-	}
 	if cfg.TTSScript == "" {
 		return nil, fmt.Errorf("sberboom: tts_script is required")
 	}
@@ -97,10 +94,23 @@ func NewSberBoomChannel(cfg config.SberBoomConfig, messageBus *bus.MessageBus) (
 	}, nil
 }
 
-// Start dials the backend and launches background goroutines.
+// Start resolves the user ID, dials the backend, and launches background goroutines.
 func (c *SberBoomChannel) Start(ctx context.Context) error {
 	logger.InfoC(channelName, "Starting SberBoom channel")
-	c.userID = c.config.UserID
+
+	c.userID = strings.TrimSpace(c.config.UserID)
+	if c.userID == "" {
+		id, err := c.detectDeviceID(ctx)
+		if err != nil || strings.TrimSpace(id) == "" {
+			if err == nil {
+				err = fmt.Errorf("command returned empty output")
+			}
+			return fmt.Errorf("sberboom: user_id not set and device ID detection failed: %w", err)
+		}
+		c.userID = strings.TrimSpace(id)
+		logger.InfoCF(channelName, "Auto-detected device ID", map[string]any{"user_id": c.userID})
+	}
+
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
 	if err := c.dial(); err != nil {
@@ -344,6 +354,22 @@ func (c *SberBoomChannel) handleUserMessage(msg SberMessage) {
 		},
 		sender,
 	)
+}
+
+// detectDeviceID reads the SberBoom device ID from the system database.
+func (c *SberBoomChannel) detectDeviceID(ctx context.Context) (string, error) {
+	cmd := exec.CommandContext(ctx, "sh", "-c",
+		`cat /proc/cmdline | grep -o 'androidboot.serialno=[^ ]*' | cut -d= -f2`)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := isolation.Run(cmd); err != nil {
+		if stderr.Len() > 0 {
+			return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
+		}
+		return "", err
+	}
+	return strings.TrimSpace(stdout.String()), nil
 }
 
 // runTTS executes the configured TTS shell script with the response text.

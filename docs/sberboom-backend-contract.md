@@ -201,7 +201,7 @@ The dialog continues until:
     "sberboom": {
       "enabled": true,
       "backend_url": "wss://skill.example.com/ws",
-      "user_id": "sber-user-001",
+      "user_id": "optional-override",
       "tts_script": "./scripts/sberboom/tts.sh",
       "token": "optional-shared-secret",
       "ping_interval": 30,
@@ -211,3 +211,5 @@ The dialog continues until:
   }
 }
 ```
+
+> **`user_id`** — опциональное поле. Если не задано, канал автоматически определяет идентификатор устройства из системной базы данных SberBoom (`/data/staros/star.db`). На VPS и других платформах без этого файла поле обязательно.
