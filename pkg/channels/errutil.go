@@ -1,7 +1,9 @@
 package channels
 
 import (
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 )
 
@@ -27,4 +29,23 @@ func ClassifyNetError(err error) error {
 		return nil
 	}
 	return fmt.Errorf("%w: %v", ErrTemporary, err)
+}
+
+// IsNetworkUnavailable reports whether err is a low-level network error
+// indicating the interface is not reachable yet (e.g. "network is unreachable",
+// DNS lookup failure). Returns true for *net.OpError and *net.DNSError.
+// Returns false for TLS errors, HTTP handshake failures, and application errors.
+//
+// Use in channel Start() methods to distinguish "no WiFi yet" from "bad config"
+// so the channel can defer its connection rather than aborting.
+func IsNetworkUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		return true
+	}
+	var dnsErr *net.DNSError
+	return errors.As(err, &dnsErr)
 }

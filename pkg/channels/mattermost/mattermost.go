@@ -82,16 +82,21 @@ func (c *MattermostChannel) Start(ctx context.Context) error {
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
 	if err := c.fetchBotInfo(); err != nil {
-		return fmt.Errorf("mattermost: failed to fetch bot info: %w", err)
+		if !channels.IsNetworkUnavailable(err) {
+			c.cancel()
+			return fmt.Errorf("mattermost: failed to fetch bot info: %w", err)
+		}
+		logger.WarnCF("mattermost", "Network not available, will retry in background",
+			map[string]any{"error": err.Error()})
+	} else {
+		logger.InfoCF("mattermost", "Mattermost bot connected", map[string]any{
+			"username": c.botUsername,
+			"user_id":  c.botUserID,
+		})
 	}
 
 	go c.websocketLoop()
-
 	c.SetRunning(true)
-	logger.InfoCF("mattermost", "Mattermost bot connected", map[string]any{
-		"username": c.botUsername,
-		"user_id":  c.botUserID,
-	})
 	return nil
 }
 
@@ -171,6 +176,32 @@ func (c *MattermostChannel) websocketLoop() {
 		case <-c.ctx.Done():
 			return
 		default:
+		}
+
+		// On deferred start (network was down during Start()), fetch bot info
+		// before connecting — botUserID is required for message deduplication.
+		if c.botUserID == "" {
+			if err := c.fetchBotInfo(); err != nil {
+				if c.ctx.Err() != nil {
+					return
+				}
+				logger.WarnCF("mattermost", "Failed to fetch bot info, retrying", map[string]any{
+					"error": err.Error(),
+					"delay": reconnectDelay.String(),
+				})
+				select {
+				case <-c.ctx.Done():
+					return
+				case <-time.After(reconnectDelay):
+				}
+				reconnectDelay = min(reconnectDelay*2, wsReconnectMax)
+				continue
+			}
+			logger.InfoCF("mattermost", "Mattermost bot connected", map[string]any{
+				"username": c.botUsername,
+				"user_id":  c.botUserID,
+			})
+			reconnectDelay = time.Second
 		}
 
 		connected, err := c.runWebSocket(wsURL)

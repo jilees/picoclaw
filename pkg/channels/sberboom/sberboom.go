@@ -114,14 +114,18 @@ func (c *SberBoomChannel) Start(ctx context.Context) error {
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
 	if err := c.dial(); err != nil {
-		c.cancel()
-		return fmt.Errorf("sberboom: initial connect failed: %w", err)
+		if !channels.IsNetworkUnavailable(err) {
+			c.cancel()
+			return fmt.Errorf("sberboom: initial connect failed: %w", err)
+		}
+		logger.WarnCF(channelName, "Network not available, will retry in background",
+			map[string]any{"error": err.Error()})
+	} else {
+		logger.InfoCF(channelName, "Connected to skill backend", map[string]any{"url": c.config.BackendURL})
 	}
 
 	c.SetRunning(true)
 	go c.reconnectLoop()
-
-	logger.InfoCF(channelName, "Connected to skill backend", map[string]any{"url": c.config.BackendURL})
 	return nil
 }
 

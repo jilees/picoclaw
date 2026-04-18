@@ -3,6 +3,7 @@ package channels
 import (
 	"errors"
 	"fmt"
+	"net"
 	"testing"
 )
 
@@ -92,6 +93,41 @@ func TestClassifyNetError(t *testing.T) {
 		}
 		if !errors.Is(err, ErrTemporary) {
 			t.Errorf("errors.Is(err, ErrTemporary) = false, want true; err = %v", err)
+		}
+	})
+}
+
+func TestIsNetworkUnavailable(t *testing.T) {
+	t.Run("nil returns false", func(t *testing.T) {
+		if IsNetworkUnavailable(nil) {
+			t.Error("expected false for nil error")
+		}
+	})
+	t.Run("plain error returns false", func(t *testing.T) {
+		if IsNetworkUnavailable(fmt.Errorf("something failed")) {
+			t.Error("expected false for plain error")
+		}
+	})
+	t.Run("net.OpError returns true", func(t *testing.T) {
+		opErr := &net.OpError{Op: "dial", Err: fmt.Errorf("network is unreachable")}
+		if !IsNetworkUnavailable(opErr) {
+			t.Error("expected true for *net.OpError")
+		}
+	})
+	t.Run("wrapped net.OpError returns true", func(t *testing.T) {
+		opErr := &net.OpError{Op: "dial", Err: fmt.Errorf("network is unreachable")}
+		if !IsNetworkUnavailable(fmt.Errorf("outer: %w", opErr)) {
+			t.Error("expected true for wrapped *net.OpError")
+		}
+	})
+	t.Run("net.DNSError returns true", func(t *testing.T) {
+		if !IsNetworkUnavailable(&net.DNSError{Err: "no such host", Name: "example.com"}) {
+			t.Error("expected true for *net.DNSError")
+		}
+	})
+	t.Run("ErrTemporary sentinel returns false", func(t *testing.T) {
+		if IsNetworkUnavailable(ErrTemporary) {
+			t.Error("expected false for ErrTemporary sentinel")
 		}
 	})
 }
