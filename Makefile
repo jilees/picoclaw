@@ -197,6 +197,13 @@ build-linux-arm64: generate
 	GOOS=linux GOARCH=arm64 $(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 ./$(CMD_DIR)
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64"
 
+## build-sberboom: Build for SberBoom smart speaker (Linux ARM64, minimal channels)
+build-sberboom: generate
+	@echo "Building for SberBoom (linux/arm64)..."
+	@mkdir -p $(BUILD_DIR)
+	GOOS=linux GOARCH=arm64 $(GO) build -tags stdjson,sberboom -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-sberboom ./$(CMD_DIR)
+	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)-sberboom"
+
 ## build-linux-mipsle: Build for Linux MIPS32 LE
 build-linux-mipsle: generate
 	@echo "Building for linux/mipsle (softfloat)..."

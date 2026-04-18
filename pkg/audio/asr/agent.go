@@ -1,3 +1,5 @@
+//go:build !sberboom
+
 package asr
 
 import (

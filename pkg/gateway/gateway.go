@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sort"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -18,25 +17,6 @@ import (
 	"github.com/sipeed/picoclaw/pkg/audio/tts"
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
-	_ "github.com/sipeed/picoclaw/pkg/channels/dingtalk"
-	_ "github.com/sipeed/picoclaw/pkg/channels/sberboom"
-	_ "github.com/sipeed/picoclaw/pkg/channels/discord"
-	_ "github.com/sipeed/picoclaw/pkg/channels/feishu"
-	_ "github.com/sipeed/picoclaw/pkg/channels/irc"
-	_ "github.com/sipeed/picoclaw/pkg/channels/line"
-	_ "github.com/sipeed/picoclaw/pkg/channels/maixcam"
-	_ "github.com/sipeed/picoclaw/pkg/channels/mattermost"
-	_ "github.com/sipeed/picoclaw/pkg/channels/onebot"
-	"github.com/sipeed/picoclaw/pkg/channels/pico"
-	_ "github.com/sipeed/picoclaw/pkg/channels/qq"
-	_ "github.com/sipeed/picoclaw/pkg/channels/slack"
-	_ "github.com/sipeed/picoclaw/pkg/channels/teams_webhook"
-	_ "github.com/sipeed/picoclaw/pkg/channels/telegram"
-	_ "github.com/sipeed/picoclaw/pkg/channels/vk"
-	_ "github.com/sipeed/picoclaw/pkg/channels/wecom"
-	_ "github.com/sipeed/picoclaw/pkg/channels/weixin"
-	_ "github.com/sipeed/picoclaw/pkg/channels/whatsapp"
-	_ "github.com/sipeed/picoclaw/pkg/channels/whatsapp_native"
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/cron"
 	"github.com/sipeed/picoclaw/pkg/devices"
@@ -756,19 +736,6 @@ func setupCronTool(
 	return cronService, nil
 }
 
-// overridePicoToken replaces the pico channel token with the one from the PID file.
-// The PID file is the single source of truth for the pico auth token;
-// it is generated once at gateway startup and remains unchanged across reloads.
-func overridePicoToken(cfg *config.Config, token string) {
-	if !cfg.Channels.Pico.Enabled {
-		return
-	}
-	picoToken := cfg.Channels.Pico.Token.String()
-	if picoToken == "" || strings.HasPrefix(picoToken, pico.PicoTokenPrefix) {
-		return
-	}
-	cfg.Channels.Pico.SetToken(pico.PicoTokenPrefix + token + picoToken)
-}
 
 func createHeartbeatHandler(agentLoop *agent.AgentLoop) func(prompt, channel, chatID string) *tools.ToolResult {
 	return func(prompt, channel, chatID string) *tools.ToolResult {
