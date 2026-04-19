@@ -554,8 +554,6 @@ type PicoClientConfig struct {
 type SberBoomConfig struct {
 	Enabled      bool                `json:"enabled"                 yaml:"-"               env:"PICOCLAW_CHANNELS_SBERBOOM_ENABLED"`
 	BackendURL   string              `json:"backend_url"             yaml:"-"               env:"PICOCLAW_CHANNELS_SBERBOOM_BACKEND_URL"`
-	UserID       string              `json:"user_id"                 yaml:"-"               env:"PICOCLAW_CHANNELS_SBERBOOM_USER_ID"`
-	TTSScript    string              `json:"tts_script"              yaml:"-"               env:"PICOCLAW_CHANNELS_SBERBOOM_TTS_SCRIPT"`
 	Token        SecureString        `json:"token,omitzero"          yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_SBERBOOM_TOKEN"`
 	PingInterval int                 `json:"ping_interval,omitempty" yaml:"-"`
 	ReadTimeout  int                 `json:"read_timeout,omitempty"  yaml:"-"`

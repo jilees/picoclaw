@@ -29,6 +29,10 @@ const (
 	defaultReadTimeout  = 60 * time.Second
 	reconnectBackoff    = 5 * time.Second
 
+	ttsBoxBin    = "/vendor/staros/box"
+	ttsStarJSON  = "/vendor/staros/star.json"
+	ttsRequestID = "picoclaw"
+
 	// voiceInstruction is appended to every inbound message so the LLM replies
 	// in a concise, TTS-friendly style (no markdown, short sentences).
 	voiceInstruction = "\n\n[SYSTEM]: The user spoke this via voice on a smart speaker. " +
@@ -82,9 +86,6 @@ func NewSberBoomChannel(cfg config.SberBoomConfig, messageBus *bus.MessageBus) (
 	if cfg.BackendURL == "" {
 		return nil, fmt.Errorf("sberboom: backend_url is required")
 	}
-	if cfg.TTSScript == "" {
-		return nil, fmt.Errorf("sberboom: tts_script is required")
-	}
 
 	base := channels.NewBaseChannel(channelName, cfg, messageBus, cfg.AllowFrom)
 
@@ -98,18 +99,15 @@ func NewSberBoomChannel(cfg config.SberBoomConfig, messageBus *bus.MessageBus) (
 func (c *SberBoomChannel) Start(ctx context.Context) error {
 	logger.InfoC(channelName, "Starting SberBoom channel")
 
-	c.userID = strings.TrimSpace(c.config.UserID)
-	if c.userID == "" {
-		id, err := c.detectDeviceID(ctx)
-		if err != nil || strings.TrimSpace(id) == "" {
-			if err == nil {
-				err = fmt.Errorf("command returned empty output")
-			}
-			return fmt.Errorf("sberboom: user_id not set and device ID detection failed: %w", err)
+	id, err := c.detectDeviceID(ctx)
+	if err != nil || strings.TrimSpace(id) == "" {
+		if err == nil {
+			err = fmt.Errorf("command returned empty output")
 		}
-		c.userID = strings.TrimSpace(id)
-		logger.InfoCF(channelName, "Auto-detected device ID", map[string]any{"user_id": c.userID})
+		return fmt.Errorf("sberboom: device ID detection failed: %w", err)
 	}
+	c.userID = strings.TrimSpace(id)
+	logger.InfoCF(channelName, "Auto-detected device ID", map[string]any{"user_id": c.userID})
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
@@ -376,9 +374,17 @@ func (c *SberBoomChannel) detectDeviceID(ctx context.Context) (string, error) {
 	return strings.TrimSpace(stdout.String()), nil
 }
 
-// runTTS executes the configured TTS shell script with the response text.
+// runTTS plays text via the SberBoom native TTS binary.
 func (c *SberBoomChannel) runTTS(text string) error {
-	cmd := exec.Command(c.config.TTSScript, text)
+	if text == "" {
+		return nil
+	}
+	textEsc := strings.ReplaceAll(strings.ReplaceAll(text, `\`, `\\`), `"`, `\"`)
+	proto := fmt.Sprintf(
+		`process_star_command{assistant_text_to_speech{base_command{source{local{request_id:"%s"}}}text_to_pronounce:"%s"}}`,
+		ttsRequestID, textEsc,
+	)
+	cmd := exec.Command(ttsBoxBin, "--app", "client", "-f", ttsStarJSON, "-v", "1", proto)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := isolation.Run(cmd); err != nil {
