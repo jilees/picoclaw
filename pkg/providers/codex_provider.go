@@ -104,15 +104,24 @@ func (p *CodexProvider) Chat(
 	defer stream.Close()
 
 	var resp *responses.Response
+	var collectedItems []responses.ResponseOutputItemUnion
 	for stream.Next() {
 		evt := stream.Current()
-		if evt.Type == "response.completed" || evt.Type == "response.failed" || evt.Type == "response.incomplete" {
+		switch evt.Type {
+		case "response.completed", "response.failed", "response.incomplete":
 			evtResp := evt.Response
 			if evtResp.ID != "" {
 				evtRespCopy := evtResp
 				resp = &evtRespCopy
 			}
+		case "response.output_item.done":
+			collectedItems = append(collectedItems, evt.Item)
 		}
+	}
+	// Codex backend does not populate Response.Output in the completed event;
+	// items are only available via response.output_item.done stream events.
+	if resp != nil && len(resp.Output) == 0 && len(collectedItems) > 0 {
+		resp.Output = collectedItems
 	}
 	err := stream.Err()
 	if err != nil {
