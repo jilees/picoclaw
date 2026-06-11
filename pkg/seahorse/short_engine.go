@@ -20,6 +20,10 @@ type Config struct {
 	DBPath                   string   `json:"dbPath"`
 	IgnoreSessionPatterns    []string `json:"ignoreSessionPatterns,omitempty"`
 	StatelessSessionPatterns []string `json:"statelessSessionPatterns,omitempty"`
+	// SkipIntermediateMessages stores only user messages and final assistant
+	// responses (assistant with non-empty Content). Tool call messages and
+	// intermediate assistant turns with empty content are discarded.
+	SkipIntermediateMessages bool `json:"skipIntermediateMessages,omitempty"`
 }
 
 // CompleteFn is the LLM completion function type.
@@ -122,6 +126,10 @@ func NewEngine(config Config, completeFn CompleteFn) (*Engine, error) {
 	if _, err := db.Exec("PRAGMA synchronous = NORMAL;"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("set synchronous: %w", err)
+	}
+	if _, err := db.Exec("PRAGMA auto_vacuum = INCREMENTAL;"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("set auto_vacuum: %w", err)
 	}
 
 	if err := runSchema(db); err != nil {
@@ -229,6 +237,37 @@ func (e *Engine) getSessionMutex(sessionKey string) *sync.Mutex {
 	return &e.sessionShards[shard].mu
 }
 
+// shouldPersistMessage returns false for intermediate tool-call messages when
+// SkipIntermediateMessages is enabled. Only user messages and assistant messages
+// with non-empty content (final responses) are persisted.
+func (e *Engine) shouldPersistMessage(msg Message) bool {
+	if !e.config.SkipIntermediateMessages {
+		return true
+	}
+	switch msg.Role {
+	case "user":
+		return true
+	case "assistant":
+		return msg.Content != "" || msg.ReasoningContent != ""
+	default:
+		return false
+	}
+}
+
+// filterMessages returns only messages that pass the persistence filter.
+func (e *Engine) filterMessages(messages []Message) []Message {
+	if !e.config.SkipIntermediateMessages {
+		return messages
+	}
+	out := make([]Message, 0, len(messages))
+	for _, m := range messages {
+		if e.shouldPersistMessage(m) {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
 // Ingest adds messages to a conversation identified by sessionKey.
 func (e *Engine) Ingest(ctx context.Context, sessionKey string, messages []Message) (*IngestResult, error) {
 	if e.shouldIgnoreSession(sessionKey) {
@@ -236,6 +275,11 @@ func (e *Engine) Ingest(ctx context.Context, sessionKey string, messages []Messa
 	}
 	if e.isStatelessSession(sessionKey) {
 		return nil, nil
+	}
+
+	messages = e.filterMessages(messages)
+	if len(messages) == 0 {
+		return &IngestResult{}, nil
 	}
 
 	mu := e.getSessionMutex(sessionKey)
@@ -383,6 +427,7 @@ func (e *Engine) IngestMessages(ctx context.Context, sessionKey string, messages
 // Simple approach: find longest matching prefix and append delta.
 // If any mismatch is detected, clear and rebuild.
 func (e *Engine) Bootstrap(ctx context.Context, sessionKey string, messages []Message) error {
+	messages = e.filterMessages(messages)
 	if e.shouldIgnoreSession(sessionKey) {
 		return nil
 	}
