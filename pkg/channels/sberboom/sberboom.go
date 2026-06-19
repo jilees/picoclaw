@@ -379,6 +379,7 @@ func (c *SberBoomChannel) runTTS(text string) error {
 	if text == "" {
 		return nil
 	}
+	text = strings.ReplaceAll(strings.ReplaceAll(text, "\r\n", " "), "\n", " ")
 	textEsc := strings.ReplaceAll(strings.ReplaceAll(text, `\`, `\\`), `"`, `\"`)
 	proto := fmt.Sprintf(
 		`process_star_command{assistant_text_to_speech{base_command{source{local{request_id:"%s"}}}text_to_pronounce:"%s"}}`,
